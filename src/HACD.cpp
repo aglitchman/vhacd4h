@@ -58,15 +58,19 @@ public:
     {
     }
 
+    bool m_logging = true;
+
     void Update(const double overallProgress,
                 const double stageProgress,
                 const double operationProgress,
                 const char * const stage,
                 const char * const operation)
     {
-        std::cout << std::setfill(' ') << std::setw(3) << (int)(overallProgress  +0.5) << "% "
-             << "[ " << stage     << " " << std::setfill(' ') << std::setw(3) << (int)(stageProgress    +0.5) << "% ] "
-                     << operation << " " << std::setfill(' ') << std::setw(3) << (int)(operationProgress+0.5) << "%" << std::endl;
+        if (m_logging) {
+            std::cout << std::setfill(' ') << std::setw(3) << (int)(overallProgress + 0.5) << "% "
+                << "[ " << stage << " " << std::setfill(' ') << std::setw(3) << (int)(stageProgress + 0.5) << "% ] "
+                << operation << " " << std::setfill(' ') << std::setw(3) << (int)(operationProgress + 0.5) << "%" << std::endl;
+        }
     };
 };
 
@@ -81,9 +85,14 @@ public:
     {
     }
 
+    bool m_enabled = true;
+
     void Log(const char * const msg)
     {
-        std::cout << msg;
+        if (m_enabled)
+        {
+            std::cout << msg;
+        }
     }
 };
 
@@ -169,6 +178,9 @@ static PRM_Default minVolumePerChDefault(0.0001);
 static PRM_Name convexhullApproximationName("convexhullApproximation", "Convex Hull Approximation");
 static PRM_Default convexhullApproximationDefault(true);
 
+static PRM_Name verboseModeName("verbose", "Verbose Mode");
+static PRM_Default verboseModeDefault(true);
+
 PRM_Template SOP_HACD::myTemplateList[] =
 {
     PRM_Template(PRM_INT, PRM_Template::PRM_EXPORT_MED, 1, &resolutionName, &resolutionDefault),
@@ -185,6 +197,7 @@ PRM_Template SOP_HACD::myTemplateList[] =
     PRM_Template(PRM_INT, PRM_Template::PRM_EXPORT_MED, 1, &maxNumVerticesPerCHName, &maxNumVerticesPerCHDefault),
     PRM_Template(PRM_FLT, PRM_Template::PRM_EXPORT_MED, 1, &minVolumePerChName, &minVolumePerChDefault),
     PRM_Template(PRM_TOGGLE, PRM_Template::PRM_EXPORT_MED, &convexhullApproximationName, &convexhullApproximationDefault),
+    PRM_Template(PRM_TOGGLE, PRM_Template::PRM_EXPORT_MED, &verboseModeName, &verboseModeDefault),
     PRM_Template()
 };
 
@@ -374,6 +387,9 @@ void SOP_HACD::evalParams(fpreal time)
     myHacdParams.m_maxNumVerticesPerCH = evalInt(maxNumVerticesPerCHName.getToken(), 0, time);
     myHacdParams.m_minVolumePerCH = evalFloat(minVolumePerChName.getToken(), 0, time);
     myHacdParams.m_convexhullApproximation = evalInt(convexhullApproximationName.getToken(), 0, time);
+
+    myLogger.m_enabled = evalInt(verboseModeName.getToken(), 0, time) == 1;
+    myCallback.m_logging = myLogger.m_enabled;
 }
 
 void newSopOperator(OP_OperatorTable *table)
