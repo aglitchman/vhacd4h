@@ -132,14 +132,8 @@ StdLogger SOP_HACD::myLogger;
 static PRM_Name resolutionName("resolution", "Resolution");
 static PRM_Default resolutionDefault(100000);
 
-static PRM_Name depthName("depth", "Depth");
-static PRM_Default depthDefault(20);
-
 static PRM_Name concavityName("concavity", "Concavity");
 static PRM_Default concavityDefault(0.001);
-
-static PRM_Name deltaName("delta", "Delta");
-static PRM_Default deltaDefault(0.05);
 
 static PRM_Name planeDownsamplingName("planeDownsamping", "Plane Downsampling");
 static PRM_Default planeDownsamplingDefault(4);
@@ -152,9 +146,6 @@ static PRM_Default alphaDefault(0.05);
 
 static PRM_Name betaName("beta", "Beta");
 static PRM_Default betaDefault(0.05);
-
-static PRM_Name gammaName("gamma", "Gamma");
-static PRM_Default gammaDefault(0.0005);
 
 static PRM_Name pcaName("pca", "PCA");
 static PRM_Default pcaDefault(0);
@@ -178,25 +169,30 @@ static PRM_Default minVolumePerChDefault(0.0001);
 static PRM_Name convexhullApproximationName("convexhullApproximation", "Convex Hull Approximation");
 static PRM_Default convexhullApproximationDefault(true);
 
+static PRM_Name maxConvexHullsName("maxConvexHulls", "Max Convex Hulls");
+static PRM_Default maxConvexHullsDefault(1024);
+
+static PRM_Name projectHullVerticesName("projectHullVertices", "Project Hull Vertices");
+static PRM_Default projectHullVerticesDefault(true);
+
 static PRM_Name verboseModeName("verbose", "Verbose Mode");
 static PRM_Default verboseModeDefault(true);
 
 PRM_Template SOP_HACD::myTemplateList[] =
 {
     PRM_Template(PRM_INT, PRM_Template::PRM_EXPORT_MED, 1, &resolutionName, &resolutionDefault),
-    PRM_Template(PRM_INT, PRM_Template::PRM_EXPORT_MED, 1, &depthName, &depthDefault),
     PRM_Template(PRM_FLT, PRM_Template::PRM_EXPORT_MED, 1, &concavityName, &concavityDefault),
-    PRM_Template(PRM_FLT, PRM_Template::PRM_EXPORT_MED, 1, &deltaName, &deltaDefault),
     PRM_Template(PRM_INT, PRM_Template::PRM_EXPORT_MED, 1, &planeDownsamplingName, &planeDownsamplingDefault),
     PRM_Template(PRM_INT, PRM_Template::PRM_EXPORT_MED, 1, &convexhullDownsamplingName, &convexhullDownsamplingDefault),
     PRM_Template(PRM_FLT, PRM_Template::PRM_EXPORT_MED, 1, &alphaName, &alphaDefault),
     PRM_Template(PRM_FLT, PRM_Template::PRM_EXPORT_MED, 1, &betaName, &betaDefault),
-    PRM_Template(PRM_FLT, PRM_Template::PRM_EXPORT_MED, 1, &gammaName, &gammaDefault),
     PRM_Template(PRM_INT, PRM_Template::PRM_EXPORT_MED, 1, &pcaName, &pcaDefault),
     PRM_Template(PRM_ORD, PRM_Template::PRM_EXPORT_MED, &modeName, &modeDefault, &modeMenu),
     PRM_Template(PRM_INT, PRM_Template::PRM_EXPORT_MED, 1, &maxNumVerticesPerCHName, &maxNumVerticesPerCHDefault),
     PRM_Template(PRM_FLT, PRM_Template::PRM_EXPORT_MED, 1, &minVolumePerChName, &minVolumePerChDefault),
     PRM_Template(PRM_TOGGLE, PRM_Template::PRM_EXPORT_MED, &convexhullApproximationName, &convexhullApproximationDefault),
+    PRM_Template(PRM_INT, PRM_Template::PRM_EXPORT_MED, &maxConvexHullsName, &maxConvexHullsDefault),
+    PRM_Template(PRM_TOGGLE, PRM_Template::PRM_EXPORT_MED, &projectHullVerticesName, &projectHullVerticesDefault),
     PRM_Template(PRM_TOGGLE, PRM_Template::PRM_EXPORT_MED, &verboseModeName, &verboseModeDefault),
     PRM_Template()
 };
@@ -290,7 +286,7 @@ OP_ERROR SOP_HACD::cookMySop(OP_Context &context)
     }
 
     //
-    std::vector<int> idxVec;
+    std::vector<unsigned int> idxVec;
     idxVec.reserve(gdp->getNumPrimitives() * 3);
 
     GEO_Primitive * prim = NULL;
@@ -313,7 +309,7 @@ OP_ERROR SOP_HACD::cookMySop(OP_Context &context)
     //
     evalParams(context.getTime());
 
-    bool success = interfaceVHACD->Compute(&pointVec[0], 3, pointVec.size() / 3, &idxVec[0], 3, idxVec.size() / 3, myHacdParams);
+    bool success = interfaceVHACD->Compute(&pointVec[0], static_cast<unsigned int>(pointVec.size() / 3), &idxVec[0], static_cast<unsigned int>(idxVec.size() / 3), myHacdParams);
     if (success && interfaceVHACD->GetNConvexHulls())
     {
         for (unsigned int i = 0; i < interfaceVHACD->GetNConvexHulls(); ++ i)
@@ -374,19 +370,18 @@ OP_ERROR SOP_HACD::cookMySop(OP_Context &context)
 void SOP_HACD::evalParams(fpreal time)
 {
     myHacdParams.m_resolution = evalInt(resolutionName.getToken(), 0, time);
-    myHacdParams.m_depth = evalInt(depthName.getToken(), 0, time);
     myHacdParams.m_concavity = evalFloat(concavityName.getToken(), 0, time);
-    myHacdParams.m_delta = evalFloat(deltaName.getToken(), 0, time);
     myHacdParams.m_planeDownsampling = evalInt(planeDownsamplingName.getToken(), 0, time);
     myHacdParams.m_convexhullDownsampling = evalInt(convexhullDownsamplingName.getToken(), 0, time);
     myHacdParams.m_alpha = evalFloat(alphaName.getToken(),0, time);
     myHacdParams.m_beta = evalFloat(betaName.getToken(), 0, time);
-    myHacdParams.m_gamma = evalFloat(gammaName.getToken(), 0, time);
     myHacdParams.m_pca = evalInt(pcaName.getToken(), 0, time);
     myHacdParams.m_mode = evalInt(modeName.getToken(), 0, time);
     myHacdParams.m_maxNumVerticesPerCH = evalInt(maxNumVerticesPerCHName.getToken(), 0, time);
     myHacdParams.m_minVolumePerCH = evalFloat(minVolumePerChName.getToken(), 0, time);
     myHacdParams.m_convexhullApproximation = evalInt(convexhullApproximationName.getToken(), 0, time);
+    myHacdParams.m_maxConvexHulls = evalInt(maxConvexHullsName.getToken(), 0, time);
+    myHacdParams.m_projectHullVertices = evalInt(projectHullVerticesName.getToken(), 0, time);
 
     myLogger.m_enabled = evalInt(verboseModeName.getToken(), 0, time) == 1;
     myCallback.m_logging = myLogger.m_enabled;

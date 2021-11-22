@@ -1,45 +1,78 @@
-# set( HACD_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/public )
+project(VHACD_LIB CXX C)
+include(${CMAKE_COMMON_INC})
 
-option(USE_OPENCL "Using OpenCL" OFF)
-option(USE_OPENMP "Using OpenMP" OFF)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-if(USE_OPENCL)
-	FIND_PACKAGE(OpenCL REQUIRED)
-	SET(OpenCL_INCLUDE_DIR ${HOUDINI_INCLUDE_DIR})
-	SET(OpenCL_LIBRARY ${HOUDINI_LIBRARY_DIR}/OpenCL)
-    if (OpenCL_FOUND)
-        include_directories("${OpenCL_INCLUDE_DIRS}")
-        add_definitions( -DOPENCL_FOUND=1 )
-        add_definitions( -DOPENCL_CL_FILES="${PROJECT_CL_FILES}" )
-    endif()
+if (NOT NO_OPENCL)
+	#include(FindOpenCL OPTIONAL)
+	find_package(OpenCL)
 endif()
-if(USE_OPENMP)
-    if(NOT APPLE)
-        include(FindOpenMP)
-        if(OPENMP_FOUND)
-            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-        endif()
-    endif()
+if (NOT NO_OPENMP)
+	#include(FindOpenMP OPTIONAL)
+	find_package(OpenMP)
 endif()
-
+if(OPENMP_FOUND)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+endif()
 set(LIB_TYPE "STATIC" CACHE STRING "STATIC, SHARED or MODULE?")
 message("[VHACD] \t LIB_TYPE " ${LIB_TYPE})
+add_library(vhacd ${LIB_TYPE} ${PROJECT_CPP_FILES} ${PROJECT_C_FILES} ${PROJECT_INC_FILES} ${PROJECT_INL_FILES} ${PROJECT_CL_FILES})
 
-file(GLOB PROJECT_CL_FILES "cl/*")
-file(GLOB PROJECT_INC_FILES "inc/*")
-file(GLOB PROJECT_PUBLIC_FILES "public/*")
-file(GLOB PROJECT_SRC_FILES "src/*")
+if (OpenCL_FOUND)
+    target_include_directories(vhacd PRIVATE "${OpenCL_INCLUDE_DIR}")
+    target_link_libraries(vhacd PRIVATE "${OpenCL_LIBRARY}")
+    target_compile_definitions(vhacd PRIVATE -DOPENCL_FOUND=1 )
+    target_compile_definitions(vhacd PRIVATE -DOPENCL_CL_FILES="${PROJECT_CL_FILES}" )
+endif()
 
-add_definitions(-D_ITERATOR_DEBUG_LEVEL=0)
 
-include_directories( "${CMAKE_CURRENT_SOURCE_DIR}/inc" )
-add_library(VHACD_LIB ${LIB_TYPE} ${PROJECT_CL_FILES} ${PROJECT_INC_FILES} ${PROJECT_PUBLIC_FILES} ${PROJECT_SRC_FILES})
-target_include_directories (VHACD_LIB PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/public ${CMAKE_CURRENT_SOURCE_DIR}/inc) 
+target_include_directories(vhacd PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/public/>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc/>
+  $<INSTALL_INTERFACE:include/>  # <prefix>/include/mylib
+  )
 
-#message("[VHACD] \t -> CMAKE_INSTALL_PREFIX " ${CMAKE_INSTALL_PREFIX})
-#install(TARGETS VHACD_LIB DESTINATION bin)
-#install(FILES ${PROJECT_PUBLIC_FILES} DESTINATION include)
-#install(FILES ${PROJECT_INC_FILES} DESTINATION include)
+
+message("[VHACD] \t -> CMAKE_INSTALL_PREFIX " ${CMAKE_INSTALL_PREFIX})
+install(TARGETS vhacd EXPORT vhacd-targets DESTINATION lib)
+install(FILES ${PROJECT_INC_FILES} DESTINATION include)
+install(FILES ${PROJECT_INL_FILES} DESTINATION include)
+
+
+set(VHACD_LIB_VERSION 3.2.0)
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/vhacd/vhacd-config-version.cmake"
+  VERSION ${VHACD_LIB_VERSION}
+  COMPATIBILITY AnyNewerVersion
+)
+
+export(EXPORT vhacd-targets NAMESPACE ::
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/vhacd/vhacd-targets.cmake"
+)
+
+configure_file(cmake/vhacd-config.cmake
+  "${CMAKE_CURRENT_BINARY_DIR}/vhacd/vhacd-config.cmake"
+  COPYONLY
+)
+
+set(ConfigPackageLocation lib/cmake/vhacd)
+install(EXPORT vhacd-targets
+  FILE
+    vhacd-targets.cmake
+  DESTINATION
+    ${ConfigPackageLocation}
+	NAMESPACE ::
+)
+install(
+  FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/vhacd/vhacd-config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/vhacd/vhacd-config-version.cmake"
+  DESTINATION
+    ${ConfigPackageLocation}
+  COMPONENT
+    Devel
+)
 
