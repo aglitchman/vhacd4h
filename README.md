@@ -3,6 +3,14 @@ V-HACD for Houdini
 
 Refer to the implementation of [Volumetric Hierarchical Approximate Convex Decomposition](https://code.google.com/p/v-hacd)
 
+## Build Notes
+
+Run your CMAKE `cmake -DCMAKE_PREFIX_PATH="C:/Program Files/Side Effects Software/Houdini 18.5.563/toolkit/cmake" .` or uncomment this line in the `src/CMakeLists.txt`:
+
+```CMakeLists.txt
+list( APPEND CMAKE_PREFIX_PATH "C:/Program Files/Side Effects Software/Houdini 18.5.563/toolkit/cmake" )
+```
+
 # Copyrights
 
 ## V-HACD for Houdini

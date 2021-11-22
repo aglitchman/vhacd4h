@@ -1,5 +1,5 @@
 
-# Run your CMAKE as "cmake -DCMAKE_PREFIX_PATH=/your/path ."
+# Run your CMAKE "cmake -DCMAKE_PREFIX_PATH='C:/Program Files/Side Effects Software/Houdini 18.5.563/toolkit/cmake' ."
 # or uncomment this line
 # list( APPEND CMAKE_PREFIX_PATH "C:/Program Files/Side Effects Software/Houdini 18.5.563/toolkit/cmake" )
 
